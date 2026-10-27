@@ -32,7 +32,7 @@ Regeln für "taxon" (immer der lateinische Name, nie deutsch):
 - Alle übrigen Tiere: die ORDNUNG
 
 Weitere Regeln:
-- "name_de": der gebräuchliche deutsche Name. Gibt es keinen etablierten, schreibe "".
+- "name_de": der gebräuchliche deutsche Name. Gibt es keinen etablierten Namen, verwende eine möglichst naheliegende deutsche Bezeichnung, die sich an verwandten Arten, dem wissenschaftlichen Namen oder typischen Merkmalen orientiert.
 - "description": höchstens 5 Wörter, Merkmale zum Erkennen im Feld. Kein Punkt am Ende.
 - "habitat": allgemeiner Lebensraum oder Verbreitung, höchstens 6 Wörter (z. B. "Feuchte Wälder, Mitteleuropa").
 - Kennst du den wissenschaftlichen Namen nicht sicher (Tippfehler, unbekannt, mehrdeutig), setze "unknown": true
