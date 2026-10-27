@@ -1,0 +1,52 @@
+name: Species Inbox
+
+# Läuft, sobald die iPhone-App einen fertigen Eintrag (entry.json) hochlädt.
+on:
+  push:
+    paths:
+      - "inbox/**/entry.json"
+  workflow_dispatch:
+
+# Nie zwei Läufe gleichzeitig; neue Einträge warten auf den laufenden Lauf.
+concurrency:
+  group: species-inbox
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  inbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python-Paket
+        run: pip install requests
+
+      - name: Einträge nach Notion übertragen
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: python src/inbox.py
+
+      - name: Verarbeitete Einträge aus dem Repo löschen
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A inbox || true
+          if git diff --cached --quiet; then
+            echo "Nichts zu löschen."
+            exit 0
+          fi
+          git commit -m "Inbox verarbeitet"
+          for i in 1 2 3; do
+            git pull --rebase && git push && exit 0
+            sleep 5
+          done
+          exit 1
