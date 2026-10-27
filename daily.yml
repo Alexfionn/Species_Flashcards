@@ -1,0 +1,57 @@
+name: Species Flashcards
+
+on:
+  schedule:
+    # 05:00 UTC = 06:00 Zürich (Winter) / 07:00 (Sommer)
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Modus"
+        type: choice
+        default: run
+        options:
+          - run        # echter Lauf
+          - dry-run    # nur PDF bauen, nichts in Notion ändern
+          - demo       # Beispielkarten ohne Notion
+
+jobs:
+  flashcards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: System-Bibliotheken für WeasyPrint
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libffi8
+
+      - name: Python-Pakete
+        run: pip install -r requirements.txt
+
+      - name: Flashcards erstellen
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          MODE="${{ github.event.inputs.mode || 'run' }}"
+          case "$MODE" in
+            demo)    python src/main.py --demo ;;
+            dry-run) python src/main.py --dry-run ;;
+            *)       python src/main.py ;;
+          esac
+
+      - name: PDF als Artefakt sichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flashcards-pdf
+          path: output/*.pdf
+          if-no-files-found: ignore
+          retention-days: 14
