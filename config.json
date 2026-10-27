@@ -1,0 +1,30 @@
+{
+  "_hinweis": "Nur dieser Block muss angepasst werden. Die IDs sind Data-Source-IDs (siehe ANLEITUNG.md, Schritt 3).",
+
+  "notion": {
+    "collector_id": "406d1a5e-9ddb-8044-93a2-000bfe6f80fd",
+    "index_id": "406d1a5e-9ddb-8035-9ee8-000b0113c86b",
+    "studyplan_id": "1edd1a5e-9ddb-80d4-bf7f-000b80560348",
+    "api_version": "2026-03-11"
+  },
+
+  "properties": {
+    "name_sci": "Name (wissenschaftlich)",
+    "name_de": "Name (deutsch)",
+    "taxon": "Taxon",
+    "description": "Kurzbeschreibung",
+    "habitat": "Vorkommen",
+    "note": "Hinweis",
+    "ai_filled": "KI-ergänzt",
+    "printed_at": "Gedruckt am",
+    "studyplan_title": "Name",
+    "studyplan_date": "Date",
+    "studyplan_module": "Module",
+    "studyplan_module_value": "Flashcards"
+  },
+
+  "cards_per_sheet": 8,
+  "max_images_per_card": 2,
+  "claude_model": "claude-sonnet-5-5",
+  "studyplan_title_format": "Flashcards {date}"
+}
