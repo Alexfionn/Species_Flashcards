@@ -32,7 +32,7 @@ Regeln für "taxon" (immer der lateinische Name, nie deutsch):
 - Alle übrigen Tiere: die ORDNUNG
 
 Weitere Regeln:
-- "name_de": der gebräuchliche deutsche Name. Gibt es keinen etablierten Namen, verwende eine möglichst naheliegende deutsche Bezeichnung, die sich an verwandten Arten, dem wissenschaftlichen Namen oder typischen Merkmalen orientiert.
+- "name_de": der gebräuchliche deutsche Name. Gibt es keinen etablierten, schreibe "".
 - "description": höchstens 5 Wörter, Merkmale zum Erkennen im Feld. Kein Punkt am Ende.
 - "habitat": allgemeiner Lebensraum oder Verbreitung, höchstens 6 Wörter (z. B. "Feuchte Wälder, Mitteleuropa").
 - Kennst du den wissenschaftlichen Namen nicht sicher (Tippfehler, unbekannt, mehrdeutig), setze "unknown": true
@@ -50,30 +50,48 @@ def _strip_fences(text: str) -> str:
     return text
 
 
+BATCH_SIZE = 8          # Arten pro Anfrage; kleine Gruppen -> Antwort wird nie abgeschnitten
+MAX_TOKENS = 4096
+
+
+def _ask(client, group: list[Species]) -> dict:
+    """Eine Anfrage an Claude für eine kleine Gruppe von Arten. Bei kaputter Antwort einmal wiederholen."""
+    payload = [{
+        "name_sci": s.name_sci,
+        "name_de": s.name_de, "taxon": s.taxon,
+        "description": s.description, "habitat": s.habitat,
+    } for s in group]
+    content = json.dumps(payload, ensure_ascii=False, indent=1)
+
+    last_error = ""
+    for attempt in range(2):
+        msg = client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=MAX_TOKENS,
+            system=SYSTEM,
+            messages=[{"role": "user", "content": content}],
+        )
+        raw = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+        if getattr(msg, "stop_reason", "") == "max_tokens":
+            last_error = "Antwort wurde abgeschnitten (max_tokens erreicht)"
+            continue
+        try:
+            return json.loads(_strip_fences(raw))
+        except json.JSONDecodeError as e:
+            last_error = f"keine gültige JSON-Antwort: {e}"
+    raise RuntimeError(f"Claude-Ergänzung fehlgeschlagen: {last_error}")
+
+
 def enrich(species: list[Species]) -> list[Species]:
     """Füllt leere Felder. Arten mit unbekanntem Namen bekommen ein Problem gesetzt."""
     todo = [s for s in species if s.ok and any(not getattr(s, f) for f in FIELDS)]
     if not todo:
         return species
 
-    payload = [{
-        "name_sci": s.name_sci,
-        "name_de": s.name_de, "taxon": s.taxon,
-        "description": s.description, "habitat": s.habitat,
-    } for s in todo]
-
     client = anthropic.Anthropic(api_key=anthropic_key())
-    msg = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=2000,
-        system=SYSTEM,
-        messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False, indent=1)}],
-    )
-    raw = "".join(block.text for block in msg.content if getattr(block, "type", "") == "text")
-    try:
-        answer = json.loads(_strip_fences(raw))
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Claude-Antwort war kein JSON: {e}\n{raw[:500]}")
+    answer = {}
+    for i in range(0, len(todo), BATCH_SIZE):
+        answer.update(_ask(client, todo[i:i + BATCH_SIZE]))
 
     for s in todo:
         data = answer.get(s.name_sci)
