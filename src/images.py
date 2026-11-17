@@ -31,6 +31,17 @@ def to_data_uri(path: Path, size: tuple[int, int]) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+def save_resized(src: Path, dst: Path, max_edge: int = 900, quality: int = 80) -> Path:
+    """Für die Lernseite: Bild drehen, auf max_edge verkleinern (nicht zuschneiden), als JPEG speichern."""
+    img = ImageOps.exif_transpose(Image.open(src))
+    if img.mode not in ("RGB", "L"):
+        img = img.convert("RGB")
+    img.thumbnail((max_edge, max_edge), Image.LANCZOS)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    img.convert("RGB").save(dst, "JPEG", quality=quality, optimize=True, progressive=True)
+    return dst
+
+
 def card_images(paths: list[Path]) -> list[str]:
     """Liefert 1 oder 2 Data-URIs, passend zugeschnitten."""
     if not paths:

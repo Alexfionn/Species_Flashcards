@@ -63,7 +63,8 @@ def main():
     ok &= bool(r if isinstance(r, bool) else r[0])
 
     r = check_ds("Species Index", NOTION["index_id"],
-                 {**core, PROPS["ai_filled"]: "checkbox", PROPS["printed_at"]: "date"})
+                 {**core, PROPS["ai_filled"]: "checkbox", PROPS["printed_at"]: "date",
+                  PROPS["group"]: "select"})
     ok &= bool(r if isinstance(r, bool) else r[0])
 
     r = check_ds("Study Calendar", NOTION["studyplan_id"], {

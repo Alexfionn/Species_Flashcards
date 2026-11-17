@@ -32,6 +32,11 @@ CARDS_PER_SHEET = int(CONFIG.get("cards_per_sheet", 8))
 MAX_IMAGES = int(CONFIG.get("max_images_per_card", 2))
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", CONFIG.get("claude_model", "claude-sonnet-5-5"))
 TITLE_FORMAT = CONFIG.get("studyplan_title_format", "Flashcards {date}")
+GROUPS: dict = CONFIG.get("groups", {})           # Name -> Beschreibung, Reihenfolge zählt
+DECK = CONFIG.get("deck", {})
+SITE = ROOT / "site"                              # Quelldateien der Lernseite
+PUBLIC = ROOT / "public"                          # fertige Seite für GitHub Pages
+DECK_CACHE = ROOT / ".deck_cache"                 # Bilder-Cache zwischen den Läufen
 
 
 def notion_token() -> str:

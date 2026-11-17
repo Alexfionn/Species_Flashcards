@@ -26,6 +26,7 @@ class Species:
     description: str = ""
     habitat: str = ""
     image_urls: list = field(default_factory=list)
+    group: str = ""                                     # Artgruppe (nur im Index)
     image_paths: list = field(default_factory=list)     # lokale Dateien nach dem Download
     ai_filled: list = field(default_factory=list)       # Felder, die Claude ergänzt hat
     problem: str = ""                                   # warum die Art nicht verarbeitet wird
@@ -244,7 +245,7 @@ def move_to_index(page_id: str):
 
 
 def finalize_in_index(sp: Species, date_iso: str):
-    """Nach dem Verschieben: ergänzte Felder, KI-Häkchen und Druckdatum setzen."""
+    """Nach dem Verschieben: ergänzte Felder, KI-Häkchen, Druckdatum und Gruppe setzen."""
     props = {
         PROPS["ai_filled"]: {"checkbox": bool(sp.ai_filled)},
         PROPS["printed_at"]: {"date": {"start": date_iso}},
@@ -252,4 +253,65 @@ def finalize_in_index(sp: Species, date_iso: str):
     for key in ("name_de", "taxon", "description", "habitat"):
         if key in sp.ai_filled:
             props[PROPS[key]] = _rich(getattr(sp, key))
-    _patch(f"/pages/{sp.page_id}", {"properties": props})
+    if sp.group and PROPS.get("group"):
+        props[PROPS["group"]] = {"select": {"name": sp.group}}
+    try:
+        _patch(f"/pages/{sp.page_id}", {"properties": props})
+    except RuntimeError:
+        # Fehlt die Spalte "Gruppe" noch, soll der Druck trotzdem sauber abschliessen.
+        if PROPS.get("group") in props:
+            props.pop(PROPS["group"])
+            _patch(f"/pages/{sp.page_id}", {"properties": props})
+        else:
+            raise
+
+
+# ---------------------------------------------------------------------------
+# Species Index (für die Lernseite)
+# ---------------------------------------------------------------------------
+
+def _select_name(prop) -> str:
+    sel = (prop or {}).get("select") or {}
+    return (sel.get("name") or "").strip()
+
+
+def _date_start(prop) -> str:
+    d = (prop or {}).get("date") or {}
+    return d.get("start") or ""
+
+
+def query_index() -> list[dict]:
+    """Alle Arten im Index als einfache Dicts, inkl. letzter Änderung."""
+    body = {"page_size": 100}
+    results, cursor = [], None
+    while True:
+        if cursor:
+            body["start_cursor"] = cursor
+        data = _post(f"/data_sources/{NOTION['index_id']}/query", body)
+        results.extend(data.get("results", []))
+        if not data.get("has_more"):
+            break
+        cursor = data.get("next_cursor")
+
+    out = []
+    for page in results:
+        p = page.get("properties", {})
+        out.append({
+            "id": page["id"],
+            "edited": page.get("last_edited_time", ""),
+            "created": page.get("created_time", ""),
+            "sci": _plain_text(p.get(PROPS["name_sci"])),
+            "de": _plain_text(p.get(PROPS["name_de"])),
+            "taxon": _plain_text(p.get(PROPS["taxon"])),
+            "desc": _plain_text(p.get(PROPS["description"])),
+            "hab": _plain_text(p.get(PROPS["habitat"])),
+            "group": _select_name(p.get(PROPS["group"])),
+            "printed": _date_start(p.get(PROPS["printed_at"])),
+        })
+    return out
+
+
+def set_group(page_id: str, group: str) -> str:
+    """Gruppe im Index setzen. Gibt den neuen Änderungszeitpunkt zurück."""
+    page = _patch(f"/pages/{page_id}", {"properties": {PROPS["group"]: {"select": {"name": group}}}})
+    return page.get("last_edited_time", "")
