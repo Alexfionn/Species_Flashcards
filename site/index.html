@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arten lernen</title>
+<meta name="description" content="Digitale Flashcards aus dem Species Index, nach Artgruppen gefiltert.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Arten lernen">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#191919">
+<style>
+  /* Notion Dark Mode (Standard). Mit ?hell=1 die helle Notion-Variante. */
+  :root {
+    --bg: #191919;
+    --text: #D4D4D4;
+    --muted: #9B9B9B;
+    --line: #2F2F2F;
+    --chip: #2A2A2A;
+    --chip-hover: #333333;
+    --callout: #243D30;          /* Notion-Grün als Hintergrund */
+    --callout-text: #E3E9E5;
+    --callout-muted: #A7B8AE;
+    --green: #529E72;            /* Notion-Grün als Textfarbe */
+    --green-strong: #7CC49A;
+    --button: #3F8A5E;
+    --button-text: #FFFFFF;
+    --focus: #7CC49A;
+    --radius: 10px;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg: #FFFFFF;
+    --text: #37352F;
+    --muted: #787774;
+    --line: #E9E9E7;
+    --chip: #F1F1EF;
+    --chip-hover: #E9E9E7;
+    --callout: #EDF3EC;
+    --callout-text: #2C3A30;
+    --callout-muted: #5F7366;
+    --green: #448361;
+    --green-strong: #2F6B4B;
+    --button: #448361;
+    --button-text: #FFFFFF;
+    --focus: #448361;
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .wrap { max-width: 680px; margin: 0 auto; padding: 20px 16px calc(28px + env(safe-area-inset-bottom)); }
+  [hidden] { display: none !important; }
+
+  h1 { font-size: 1.6rem; font-weight: 700; line-height: 1.25; margin: 0 0 2px; letter-spacing: -0.01em; }
+  .meta { color: var(--muted); font-size: .875rem; margin: 0 0 22px; }
+  h2 { font-size: 1rem; font-weight: 600; margin: 0 0 10px; }
+
+  /* ---------- Auswahl ---------- */
+  .section { margin-bottom: 22px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .link {
+    border: 0; background: none; color: var(--muted); font-size: .875rem; cursor: pointer;
+    padding: 4px 6px; border-radius: 4px;
+  }
+  .link:hover { background: var(--chip); color: var(--text); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 1px solid transparent; background: var(--chip); border-radius: 6px;
+    padding: 7px 12px; cursor: pointer; font-size: .95rem; line-height: 1.2;
+    display: inline-flex; gap: 8px; align-items: baseline;
+  }
+  .chip:hover { background: var(--chip-hover); }
+  .chip .n { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+  .chip[aria-pressed="true"] { background: var(--callout); color: var(--green-strong); border-color: color-mix(in srgb, var(--green) 45%, transparent); }
+  .chip[aria-pressed="true"] .n { color: var(--green); }
+
+  .options { border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 14px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .row .label { font-size: .95rem; }
+  .row .label small { display: block; color: var(--muted); font-size: .8rem; }
+  .switch {
+    position: relative; width: 38px; height: 22px; border-radius: 11px; border: 0; cursor: pointer;
+    background: var(--chip-hover); flex: none; padding: 0;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; transition: transform .15s ease;
+  }
+  .switch[aria-checked="true"] { background: var(--green); }
+  .switch[aria-checked="true"]::after { transform: translateX(16px); }
+  .seg { display: inline-flex; background: var(--chip); border-radius: 6px; padding: 2px; flex: none; }
+  .seg button { border: 0; background: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: .875rem; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--chip-hover); color: var(--text); }
+
+  .primary {
+    width: 100%; margin-top: 22px; height: 46px; border: 0; border-radius: 6px; cursor: pointer;
+    background: var(--button); color: var(--button-text); font-weight: 600; font-size: 1rem;
+  }
+  .primary:disabled { opacity: .45; cursor: default; }
+  .secondary {
+    height: 46px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+    background: var(--chip); font-weight: 500; font-size: 1rem; padding: 0 16px;
+  }
+  .secondary:hover { background: var(--chip-hover); }
+  .note { color: var(--muted); font-size: .875rem; margin-top: 10px; text-align: center; }
+
+  /* ---------- Runde ---------- */
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: .875rem; color: var(--muted); }
+  .count { font-variant-numeric: tabular-nums; }
+  .bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 16px; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--green); transition: width .25s ease; }
+
+  .stage { perspective: 1400px; }
+  .card {
+    position: relative; width: 100%; aspect-ratio: 94 / 64; max-height: 60vh;
+    border: 0; padding: 0; background: none; cursor: pointer; display: block;
+    transform-style: preserve-3d; transition: transform .45s cubic-bezier(.3,.7,.2,1);
+    touch-action: pan-y; border-radius: var(--radius);
+  }
+  .card:focus { outline: none; }
+  .card:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+  .card.flipped { transform: rotateY(180deg); }
+  .face {
+    position: absolute; inset: 0; border-radius: var(--radius); overflow: hidden;
+    background: var(--callout); color: var(--callout-text);
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .face.back { transform: rotateY(180deg); }
+  .photos { display: flex; gap: 3px; width: 100%; height: 100%; }
+  .photos img { flex: 1 1 0; min-width: 0; height: 100%; object-fit: cover; display: block; }
+  .text { text-align: center; padding: 16px 22px; line-height: 1.3; }
+  .text .taxon { color: var(--callout-muted); font-size: clamp(.8rem, 2.6vw, .95rem); margin-bottom: 4px; }
+  .text .sci { font-weight: 700; font-size: clamp(1.25rem, 5vw, 1.75rem); }
+  .text .de { font-size: clamp(1.05rem, 4vw, 1.35rem); margin-top: 2px; }
+  .text .desc { font-size: clamp(.85rem, 2.8vw, 1rem); margin-top: 10px; }
+  .text .hab { color: var(--callout-muted); font-size: clamp(.8rem, 2.6vw, .95rem); margin-top: 2px; }
+  .card.dragging { transition: none; }
+  @media (prefers-reduced-motion: reduce) { .card, .bar > i, .switch::after { transition: none; } }
+
+  .hint { text-align: center; color: var(--muted); font-size: .875rem; min-height: 1.5em; margin: 10px 0 0; }
+  .details { text-align: center; color: var(--muted); font-size: .9rem; margin-top: 10px; min-height: 1.4em; }
+  .answer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .answer button { width: 100%; }
+  .answer .know { background: var(--callout); border-color: color-mix(in srgb, var(--green) 45%, transparent); color: var(--green-strong); }
+  .answer button:disabled { opacity: .4; cursor: default; }
+  .keys { text-align: center; color: var(--muted); font-size: .75rem; margin-top: 10px; }
+  @media (hover: none) { .keys { display: none; } }
+
+  /* ---------- Ende ---------- */
+  .result { font-size: 1.05rem; margin: 0 0 18px; }
+  .hard { list-style: none; margin: 0 0 20px; padding: 0; border-top: 1px solid var(--line); }
+  .hard li { padding: 9px 2px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; }
+  .hard .s { font-weight: 600; }
+  .hard .d { color: var(--muted); text-align: right; }
+  .end-actions { display: grid; gap: 10px; }
+
+  .msg { padding: 14px 16px; border-radius: var(--radius); background: var(--chip); color: var(--text); }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Arten lernen</h1>
+  <p class="meta" id="meta">Lade Arten …</p>
+
+  <!-- Auswahl -->
+  <section id="viewSelect" hidden>
+    <div class="section">
+      <div class="section-head">
+        <h2>Gruppen</h2>
+        <div><button class="link" id="allBtn" type="button">Alle</button><button class="link" id="noneBtn" type="button">Keine</button></div>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="options">
+      <div class="row">
+        <div class="label" id="newLabel">Nur neue Arten<small id="newSub"></small></div>
+        <button class="switch" id="newSwitch" type="button" role="switch" aria-checked="false" aria-labelledby="newLabel"></button>
+      </div>
+      <div class="row">
+        <div class="label">Abfrage</div>
+        <div class="seg" role="group" aria-label="Richtung der Abfrage">
+          <button type="button" id="dirImg" aria-pressed="true">Bild zu Name</button>
+          <button type="button" id="dirName" aria-pressed="false">Name zu Bild</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="primary" id="startBtn" type="button" disabled>Gruppe wählen</button>
+  </section>
+
+  <!-- Runde -->
+  <section id="viewRound" hidden>
+    <div class="topbar">
+      <button class="link" id="quitBtn" type="button">Beenden</button>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="bar" aria-hidden="true"><i id="barFill"></i></div>
+
+    <div class="stage">
+      <button class="card" id="card" type="button" aria-label="Karte umdrehen">
+        <div class="face front" id="front"></div>
+        <div class="face back" id="back"></div>
+      </button>
+    </div>
+    <p class="hint" id="hint">Antippen zum Umdrehen</p>
+    <div class="details" id="details"></div>
+
+    <div class="answer">
+      <button class="secondary" id="againBtn" type="button" disabled>Nochmals</button>
+      <button class="secondary know" id="knowBtn" type="button" disabled>Gewusst</button>
+    </div>
+    <p class="keys">Leertaste dreht um, Pfeil links für Nochmals, Pfeil rechts für Gewusst</p>
+  </section>
+
+  <!-- Ende -->
+  <section id="viewEnd" hidden>
+    <h2>Runde fertig</h2>
+    <p class="result" id="result"></p>
+    <div id="hardWrap">
+      <h2>Schwierige Arten</h2>
+      <ul class="hard" id="hardList"></ul>
+    </div>
+    <div class="end-actions">
+      <button class="primary" id="repeatHardBtn" type="button">Schwierige nochmals lernen</button>
+      <button class="secondary" id="backBtn" type="button">Neue Auswahl</button>
+    </div>
+  </section>
+
+  <div class="msg" id="error" hidden></div>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  if (params.get("hell") === "1") document.documentElement.dataset.theme = "light";
+
+  // Browser-Speicher ist in Notion-Embeds unzuverlässig: nur Komfort, nie nötig.
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("deck:" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("deck:" + k, JSON.stringify(v)); } catch { /* egal */ } },
+  };
+
+  const slug = (s) => s.toLowerCase()
+    .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  let DATA = null;
+  const state = { groups: new Set(), onlyNew: false, dir: "img" };
+  const round = { queue: [], total: 0, known: 0, missed: new Set(), firstTry: 0, flipped: false, list: [] };
+
+  // ---------------- Laden ----------------
+  fetch("species.json", { cache: "no-cache" })
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then((d) => { DATA = d; init(); })
+    .catch(() => {
+      $("meta").textContent = "";
+      const e = $("error"); e.hidden = false;
+      e.textContent = "Die Artenliste konnte nicht geladen werden. Läuft der Workflow «Species Deck» fehlerfrei?";
+    });
+
+  function init() {
+    const n = DATA.species.length;
+    const stand = new Date(DATA.generated).toLocaleDateString("de-CH");
+    $("meta").textContent = n ? `${n} Arten im Index, Stand ${stand}` : `Noch keine Arten mit Bild im Index, Stand ${stand}`;
+    $("newSub").textContent = `in den letzten ${DATA.new_days} Tagen dazugekommen`;
+
+    // Startauswahl: Adresse > zuletzt gewählt > alle
+    const bySlug = Object.fromEntries(DATA.groups.map((g) => [slug(g), g]));
+    const fromUrl = (params.get("gruppen") || "").split(",").map((s) => bySlug[slug(s)]).filter(Boolean);
+    const saved = store.get("groups", null);
+    const initial = fromUrl.length ? fromUrl : Array.isArray(saved) ? saved.filter((g) => DATA.groups.includes(g)) : DATA.groups;
+    initial.forEach((g) => state.groups.add(g));
+    state.dir = params.get("richtung") === "name" ? "name" : (params.has("richtung") ? "img" : store.get("dir", "img"));
+    state.onlyNew = params.get("neu") === "1";
+
+    renderSelect();
+    show("viewSelect");
+  }
+
+  // ---------------- Auswahl ----------------
+  function isNew(s) {
+    if (!s.added) return false;
+    const days = (Date.now() - Date.parse(s.added)) / 864e5;
+    return days <= DATA.new_days;
+  }
+  function pool() {
+    return DATA.species.filter((s) => state.groups.has(s.group) && (!state.onlyNew || isNew(s)));
+  }
+  function renderSelect() {
+    const chips = $("chips"); chips.textContent = "";
+    for (const g of DATA.groups) {
+      const count = DATA.species.filter((s) => s.group === g && (!state.onlyNew || isNew(s))).length;
+      if (!count) continue;                              // leere Gruppen ausblenden
+      const b = el("button", "chip");
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(state.groups.has(g)));
+      b.append(el("span", "", g), el("span", "n", String(count)));
+      b.onclick = () => { state.groups.has(g) ? state.groups.delete(g) : state.groups.add(g); saveSel(); renderSelect(); };
+      chips.append(b);
+    }
+    if (!chips.children.length) chips.append(el("p", "note", "Noch keine Gruppen vorhanden."));
+
+    $("newSwitch").setAttribute("aria-checked", String(state.onlyNew));
+    $("dirImg").setAttribute("aria-pressed", String(state.dir === "img"));
+    $("dirName").setAttribute("aria-pressed", String(state.dir === "name"));
+
+    const n = pool().length, btn = $("startBtn");
+    btn.disabled = n === 0;
+    btn.textContent = n === 0
+      ? (state.groups.size ? "Keine Arten in dieser Auswahl" : "Gruppe wählen")
+      : n === 1 ? "1 Karte lernen" : `${n} Karten lernen`;
+  }
+  function saveSel() { store.set("groups", [...state.groups]); store.set("dir", state.dir); }
+
+  $("allBtn").onclick = () => { DATA.groups.forEach((g) => state.groups.add(g)); saveSel(); renderSelect(); };
+  $("noneBtn").onclick = () => { state.groups.clear(); saveSel(); renderSelect(); };
+  $("newSwitch").onclick = () => { state.onlyNew = !state.onlyNew; renderSelect(); };
+  $("dirImg").onclick = () => { state.dir = "img"; saveSel(); renderSelect(); };
+  $("dirName").onclick = () => { state.dir = "name"; saveSel(); renderSelect(); };
+  $("startBtn").onclick = () => startRound(pool());
+
+  // ---------------- Runde ----------------
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  function startRound(list) {
+    round.list = list.slice();
+    round.queue = shuffle(list.slice());
+    round.total = list.length; round.known = 0; round.firstTry = 0; round.missed = new Set();
+    show("viewRound");
+    showCard();
+  }
+
+  function photos(s) {
+    const box = el("div", "photos");
+    for (const src of s.images.slice(0, 2)) {
+      const img = new Image(); img.src = src; img.alt = ""; img.decoding = "async";
+      img.onerror = () => img.remove();
+      box.append(img);
+    }
+    return box;
+  }
+  function names(s, full) {
+    const t = el("div", "text");
+    if (full && s.taxon) t.append(el("div", "taxon", s.taxon));
+    t.append(el("div", "sci", s.sci));
+    if (s.de) t.append(el("div", "de", `(${s.de})`));
+    if (full && s.desc) t.append(el("div", "desc", s.desc));
+    if (full && s.hab) t.append(el("div", "hab", s.hab));
+    return t;
+  }
+  function preload(s) { if (s) s.images.forEach((src) => { const i = new Image(); i.src = src; }); }
+
+  function showCard() {
+    const s = round.queue[0];
+    if (!s) return endRound();
+    const card = $("card");
+    card.classList.add("dragging"); card.classList.remove("flipped"); card.style.transform = "";
+    void card.offsetWidth; card.classList.remove("dragging");
+    round.flipped = false;
+
+    const front = $("front"), back = $("back");
+    front.textContent = ""; back.textContent = "";
+    if (state.dir === "img") { front.append(photos(s)); back.append(names(s, true)); }
+    else { front.append(names(s, false)); back.append(photos(s)); }
+
+    $("details").textContent = "";
+    $("hint").textContent = "Antippen zum Umdrehen";
+    $("againBtn").disabled = true; $("knowBtn").disabled = true;
+    $("count").textContent = `${round.known} von ${round.total} gewusst`;
+    $("barFill").style.width = `${(round.known / round.total) * 100}%`;
+    preload(round.queue[1]);
+  }
+
+  function flip() {
+    if (!round.queue.length) return;
+    round.flipped = !round.flipped;
+    $("card").classList.toggle("flipped", round.flipped);
+    const s = round.queue[0];
+    if (round.flipped) {
+      $("hint").textContent = "";
+      $("againBtn").disabled = false; $("knowBtn").disabled = false;
+      if (state.dir === "name") $("details").textContent = [s.taxon, s.desc, s.hab].filter(Boolean).join(", ");
+    }
+  }
+
+  function answer(known) {
+    if (!round.flipped || !round.queue.length) return;
+    const s = round.queue.shift();
+    if (known) {
+      round.known++;
+      if (!round.missed.has(s.id)) round.firstTry++;
+    } else {
+      round.missed.add(s.id);
+      round.queue.push(s);               // ans Ende des Stapels
+    }
+    showCard();
+  }
+
+  function endRound() {
+    show("viewEnd");
+    $("count").textContent = "";
+    const hard = round.list.filter((s) => round.missed.has(s.id));
+    $("result").textContent = `${round.firstTry} von ${round.total} beim ersten Versuch gewusst.`;
+    $("hardWrap").hidden = hard.length === 0;
+    $("repeatHardBtn").hidden = hard.length === 0;
+    const ul = $("hardList"); ul.textContent = "";
+    for (const s of hard) {
+      const li = el("li"); li.append(el("span", "s", s.sci), el("span", "d", s.de || ""));
+      ul.append(li);
+    }
+    round.hard = hard;
+  }
+
+  $("card").onclick = (e) => { if (!suppressClick) flip(); suppressClick = false; };
+  $("againBtn").onclick = () => answer(false);
+  $("knowBtn").onclick = () => answer(true);
+  $("quitBtn").onclick = () => { renderSelect(); show("viewSelect"); };
+  $("backBtn").onclick = () => { renderSelect(); show("viewSelect"); };
+  $("repeatHardBtn").onclick = () => startRound(round.hard || []);
+
+  document.addEventListener("keydown", (e) => {
+    if ($("viewRound").hidden || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); }
+    else if (e.key === "ArrowLeft" || e.key === "1") answer(false);
+    else if (e.key === "ArrowRight" || e.key === "2") answer(true);
+  });
+
+  // Wischen (nur wenn umgedreht): links = Nochmals, rechts = Gewusst
+  let startX = null, suppressClick = false;
+  const card = $("card");
+  card.addEventListener("pointerdown", (e) => { if (round.flipped) { startX = e.clientX; } });
+  card.addEventListener("pointermove", (e) => {
+    if (startX === null) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 8) { card.classList.add("dragging"); card.style.transform = `rotateY(180deg) translateX(${-dx}px) rotate(${-dx / 40}deg)`; }
+  });
+  const endDrag = (e) => {
+    if (startX === null) return;
+    const dx = e.clientX - startX; startX = null;
+    card.classList.remove("dragging"); card.style.transform = "";
+    if (Math.abs(dx) > 70) { suppressClick = true; answer(dx > 0); }
+    else if (Math.abs(dx) > 8) suppressClick = true;
+  };
+  card.addEventListener("pointerup", endDrag);
+  card.addEventListener("pointercancel", () => { startX = null; card.classList.remove("dragging"); card.style.transform = ""; });
+
+  // ---------------- Ansichten ----------------
+  function show(id) {
+    for (const v of ["viewSelect", "viewRound", "viewEnd"]) $(v).hidden = v !== id;
+    if (id === "viewRound") $("card").focus({ preventScroll: true });
+  }
+})();
+</script>
+</body>
+</html>
