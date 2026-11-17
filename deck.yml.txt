@@ -1,0 +1,85 @@
+name: Species Deck
+
+# Baut die Lernseite aus dem Species Index und veröffentlicht sie auf GitHub Pages.
+# Läuft automatisch nach dem Druck-Workflow (auch wenn nichts gedruckt wurde)
+# und jederzeit per "Run workflow".
+on:
+  workflow_run:
+    workflows: ["Species Flashcards"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: species-deck
+  cancel-in-progress: false
+
+permissions:
+  contents: write     # nur für den Keepalive-Commit (siehe unten)
+  pages: write
+  id-token: write
+
+jobs:
+  deck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Python-Pakete
+        run: pip install requests pillow anthropic
+
+      # Bilder vom letzten Lauf wiederherstellen; geladen wird nur Neues
+      - name: Bilder-Cache laden
+        uses: actions/cache/restore@v4
+        with:
+          path: .deck_cache
+          key: deck-cache-${{ github.run_id }}
+          restore-keys: deck-cache-
+
+      - name: Lernseite bauen
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python src/deck.py
+
+      - name: Bilder-Cache speichern
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .deck_cache
+          key: deck-cache-${{ github.run_id }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Auf GitHub Pages veröffentlichen
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      # Öffentliche Repos: GitHub stoppt geplante Workflows nach 60 Tagen ohne Commit.
+      # Ist der letzte Commit älter als 45 Tage, wird eine kleine Datei aktualisiert.
+      - name: Zeitplan aktiv halten
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          if [ $(( (now - last) / 86400 )) -lt 45 ]; then
+            echo "Letzter Commit ist jünger als 45 Tage."
+            exit 0
+          fi
+          date -u +%Y-%m-%d > .keepalive
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .keepalive
+          git commit -m "Zeitplan aktiv halten"
+          git pull --rebase && git push
